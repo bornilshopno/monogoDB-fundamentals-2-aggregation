@@ -77,6 +77,21 @@ db.test.aggregate([
     
     
 //bucket==>> groupBy,boundaries,default,output
+//basic structure
+db.test.aggregate([
+    {$bucket: {
+          groupBy: "$price",
+          boundaries: [ 0, 200, 400 ],
+          default: "Other",
+          output: {
+            "count": { $sum: 1 },
+            "titles" : { $push: "$title" }
+          }
+        }}
+    
+    ])
+
+//useCase
 db.test.aggregate([
     //stage-1
     {$bucket: {
@@ -94,4 +109,71 @@ db.test.aggregate([
     ])
 
 
-``
+```
+
+
+
+
+## Further examples
+```js
+
+db.test.aggregate([
+    {$facet:
+    {
+    //pipeline:1
+        "friends":[
+            {$unwind: "$friends"},
+            {$group: { _id: "$friends", count:{$sum:1}}}
+            ],
+    //pipeline:2
+        "skills":[
+            {$unwind: "$skills"},
+            {$group: { _id: "$skills",count:{$sum:1}}}
+            ],
+            
+            
+        "languages":[
+            {$unwind: "$languages"},
+            {$group: { _id: "$languages", count:{$sum: 1}}}
+            ]
+    }    
+    }
+    ])
+    
+    
+    
+//Basic Look Up Structure
+db.orders.aggregate(
+    {
+        $lookup: {
+               from: "<collection to join>",
+               localField: "<field from the input documents>",
+               foreignField: "<field from the documents of the from collection>",
+               as: "<output array field>"
+             }
+    }
+    )
+    
+//usecase
+db.orders.aggregate(
+    {
+        $lookup: {
+               from: "test",//looking up from test db
+               localField: "userId",// searchparameters in orders db
+               foreignField: "_id", //searchparameters in test db
+               as: "customer_details" //naming of testdb information in aggregated orders
+             }
+    }
+    )
+    
+//indexing
+db.getCollection("massive-data").createIndex({email:1})
+db.getCollection("massive-data").createIndex({about: "text"})
+//collscan ixscan idhack
+db.getCollection("massive-data").dropIndex({email:1})    
+
+db.test.find({_id: new ObjectId("6406ad63fc13ae5a40000065")}).explain("executionStats")
+db.getCollection("massive-data").find({$text: { $search: "dolor" }},{about:1})
+
+
+```
