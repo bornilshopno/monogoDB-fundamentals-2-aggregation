@@ -36,7 +36,7 @@ filters document with condition
 ```js
 //will return all the docs of Male who are less than 30
 db.collectionName.aggregate([
-    {$match: {gender:"Male", age:{$lt:30}}}
+    {$match: {gender:"Male", age: { $lt : 30}}}
 ])
 
 ```
@@ -48,7 +48,7 @@ Groups documents by a field and lets us do calculations
 ```js
 //groups documnet by gender field and provide number of docs in each field value
 db.test.aggregate([
-    {$group: { _id: "$gender",count:{$sum:1}}}
+    {$group: { _id: "$gender",count: {$sum : 1}}}
     ])
     
 //$push tag is used to show the field in the doc. here it will show all phone number of the specific array  
@@ -69,7 +69,7 @@ Adds new fields to documents.
 db.collectionName.aggregate([
     {
         $addFields:{
-            totalPrice:{$multiplyL:["$price", "quantity"]}
+            totalPrice: {$multiply: ["$price", "quantity"]}
         }
     },
     //create "newCollection" document adding totalPrice to collectionName
@@ -91,7 +91,7 @@ db.collectionName.aggregate([
     //stage-1
     {$unwind: "$interests"},//flattens the interests array
     //stage-2
-    {$group:{_id:"$age", interest: {$push: "$interests"}}}//groups by age and shows interest of that age/range
+    {$group:{_id: "$age", interest: {$push: "$interests"}}}//groups by age and shows interest of that age/range
 ])
 
 ```
@@ -299,3 +299,100 @@ Requires extra queries or $lookup to fetch related data.
 Slower reads if many joins.
 
 --------------------------------------------------
+
+## $substrBytes
+
+Syntax:
+
+```
+$substrBytes: [ <string>, <start>, <length> ]
+```
+string: The string field or value to extract from.
+
+start: The position (0-based) to start the substring from.
+
+length: How many bytes to extract.
+
+```js
+//In $substrBytes, setting the length to -1 means:take everything from the start index to the end of the string.
+{$substrBytes: ["$balance", 1, -1] } //output: "1893.92" when { "balance": "$1893.92" }
+{ $substrBytes: ["Hello", 1, -1] }  // → "ello"
+{ $substrBytes: ["abcdef", 0, 3] }  // → "abc"
+
+
+```
+
+--------------------------------------------
+
+### Further Practice Problems [Practice Problem - 2]: 
+
+```js
+//1. Retrieve the count of individuals who are active (isActive: true) for each gender.
+
+db.indiviualInfo.aggregate([
+    {$match: {isActive: true}},
+    {$group: {_id: "$gender", count:{$sum:1}}}
+    ])
+    
+//optional for aggregating with 2 fields
+db.indiviualInfo.aggregate([
+    {$group: {_id: {active:"$isActive", gender:"$gender"}, count:{$sum:1}}}
+    ])
+    
+//2. Retrieve the names and email addresses of individuals who are active (`isActive: true`) and have a favorite fruit of "banana".
+db.indiviualInfo.aggregate([
+    {$match: {favoriteFruit : "banana" , isActive: true}},
+    {$project: {name:1, email:1,isActive:1, favoriteFruit:1}}
+    ])
+    
+//3. Find the average age of individuals for each favorite fruit, then sort the results in descending order of average age
+db.getCollection("indiviualInfo").aggregate([
+    {$group: { _id: "$favoriteFruit", aveAge:{$avg: "$age"}}},
+    {$sort: {aveAge: -1}}
+    ])
+
+//4. Retrieve a list of unique friend names for individuals who have at least one friend, and include only the friends with names starting with the letter "W".
+//couldnot do it yet
+    
+//5.  Use $facet to separate individuals into two facets based on their age:
+//those below 30 and those above 30. Then, within each facet, bucket theindividuals into age ranges (e.g., 20-25, 26-30, etc.) and sort them by age within each bucket.
+db.indiviualInfo.aggregate([
+    {$facet: {
+        //pipeline-1
+        "YOUNGERS":[
+            {$match: {age: { $lte: 30}}},
+          {$bucket:
+                {
+                groupBy: "$age",
+                boundaries: [6,11,16,21,26],
+                default: "0-5",
+                output: {count: {$sum :1}}
+                    
+                }
+            },
+            {$sort:{count:1}}
+            ],
+        //pipeline-2
+        "OLDERS":[
+            {$match: {age: {$gt : 30}}},
+            {$bucket:{
+                groupBy: "$age",
+                boundaries:[31,36,41],
+                default:"46Y+",
+                output: {count: {$sum:1}}
+            }},
+            {$sort:{count:1}}
+            ]
+    }}])
+    
+//6. Calculate the total balance of individuals for each company and displaythe company name along with the total balance. Limit the result to show only the top two companies with the highest total balance
+db.indiviualInfo.aggregate([
+    {$project:{company:1, 
+    balance:{ $toDouble: {$substrBytes: ["$balance", 1, -1]}}}},
+    {$group: { _id: "$company", totalBalance: {$sum:"$balance"}, count:{$sum:1}} },
+    {$sort: {totalBalance:-1}},
+    {$limit: 2}
+    ])
+```
+
+---------------------------------------------------------------------
