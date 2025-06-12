@@ -223,7 +223,7 @@ db.test.aggregate([{
 
 ```
 --------------------------------------------------
-## Further examples
+## Indexing in MongoDB
 
 ```js
 //indexing with one field
